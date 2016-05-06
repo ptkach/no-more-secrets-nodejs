@@ -1,0 +1,17 @@
+{
+  "name": "node_cli",
+  "version": "1.0.0",
+  "bin": {
+    "node_cli": "index.js"
+  },
+  "description": "node_cli",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "intercept-stdout": "^0.1.2"
+  }
+}
