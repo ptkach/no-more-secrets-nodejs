@@ -1,6 +1,6 @@
 {
   "name": "no-more-secrets",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "bin": {
     "nms": "index.js"
   },
