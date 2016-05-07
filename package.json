@@ -1,17 +1,13 @@
 {
-  "name": "node_cli",
+  "name": "no-more-secrets",
   "version": "1.0.0",
   "bin": {
-    "node_cli": "index.js"
+    "nms": "index.js"
   },
-  "description": "node_cli",
+  "description": "nms",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "intercept-stdout": "^0.1.2"
-  }
+  "author": "Pavlo Tkach",
+  "license": "MIT"
 }

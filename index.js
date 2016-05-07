@@ -1,29 +1,5 @@
 #!/usr/bin/env node
 
-//process.stdout.clearLine();  // clear current text
-//process.stdout.cursorTo(0);  // move cursor to beginning of line
-//process.stdout.write(data);  // write text
-
-//var intercept = require("intercept-stdout");
-//
-//var unhook_intercept = intercept(function(txt) {
-//    return txt.replace( /this/i , 'that' );
-//});
-//
-//console.log("This text is being modified");
-
-//let processInput = (data) => {
-//    const allDataController = new AllDataController(data);
-//    process.stdout.write('\033[0f');
-//    process.stdout.clearScreenDown();
-//    process.stdout.write(allDataController.getCryptedText());
-//    setTimeout(function() {
-//        process.stdout.write('\033[0f');
-//        process.stdout.clearScreenDown();
-//        process.stdout.write(allDataController.initial);
-//    }, 2000);
-//};
-
 process.stdin.resume();
 process.stdin.setEncoding("utf8");
 process.stdin.on("data", function(data){
@@ -33,77 +9,101 @@ process.stdin.on("data", function(data){
 let maskChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890!@#$%^&*()-_=+{}[]:;|\"'<>,.?/".split("");
 
 class Char {
-    constructor(initial, animationInterval=3){
+    constructor(initial, animationInterval){
         this.initial = initial;
         this.decrypted = false;
         this.animationInterval = animationInterval;
-        this.crypted = Char.doNotModifyChars.includes(initial) ? initial : maskChars[Math.floor(Math.random()*maskChars.length)];
+        this.crypted = this.generateCrypted();
+    }
+    generateCrypted(){
+        return Char.doNotModifyChars.includes(this.initial) ? this.initial : maskChars[Math.floor(Math.random()*maskChars.length)]
+    }
+    initDecrypt(){
+        const gen = this.decrypt();
+        return new Promise((resolve)=>{
+            setInterval(()=>{
+                const {done} = gen.next();
+                if(done) {
+                    resolve();
+                }
+            }, 300)
+        });
+    }
+    getValue(){
+        return this.decrypted ? this.initial : this.crypted;
     }
     * decrypt(){
         for(let i=0;i<this.animationInterval;i++){
-            yield this.crypted = Char.doNotModifyChars.includes(this.initial) ? this.initial : maskChars[Math.floor(Math.random()*maskChars.length)];
+            yield this.crypted = this.generateCrypted();
         }
         this.decrypted = true;
-        this.crypted = null;
+        yield this.initial;
     }
 }
 Char.doNotModifyChars = ["\n"," "];
 
-class AllDataController {
-    constructor(initial){
-        this.initial = initial;
-        this.rows = [];
-        this.crypted = null;
+class DataProcessor {
+    constructor(){
+        this.chars = null;//It supposed to contain all chars
+        this.rows = [];//It has all rows with text
+        this.decrypted = false;
     }
-    getTextFromCryptedChars(cryptedChars){
-        return [].concat.apply([], cryptedChars).reduce((res, char)=>{
-            return res.push(char.crypted || char.initial), res;
+    getTextFromCryptedChars(chars){
+        return [].concat.apply([], chars).reduce((res, char)=>{
+            return res.push(char.getValue()), res;
         },[]).join("");
     }
-    getCryptedCharsFromText(){
-        this.rows = this.initial.split("\n");
-        this.crypted = this.rows.reduce((res, row)=>{//[new Char, new Char, new Char,new Char, new Char, new Char...]
+    getCryptedCharsFromText(text){
+        this.rows = text.split("\n");
+        this.chars = this.rows.reduce((res, row)=>{//[new Char, new Char, new Char,new Char, new Char, new Char...]
             row = row.split("").map((char)=>{
-                return new Char(char);
+                return new Char(char, (Math.random()*20|0));
             });
             row.unshift(new Char("\n"));
             return [...res, ...row];
         }, []);
-        return this.crypted;
+        return this.chars;
     }
-    crypt(){
-        return this.getTextFromCryptedChars(this.getCryptedCharsFromText())
+    getCryptedText(text){
+        return this.getTextFromCryptedChars(this.getCryptedCharsFromText(text))
     }
-    decrypt(){
-        const itemsToDecrypt = this.crypted.filter((item)=>{
-            return !item.decrypted;
+    initDecrypt(){
+        var pr = this.chars.map((char)=>{
+            return char.initDecrypt();
         });
-        if(!itemsToDecrypt.length){
-            return false;
+        Promise.all(pr).then(()=>{
+            this.decrypted = true;
+        })
+    }
+    getSnapshot(){
+        let value = this.getTextFromCryptedChars(this.chars);
+        return {
+            done: this.decrypted,
+            value
         }
-        this.crypted.forEach((cryptedElement)=>{
-            cryptedElement.decrypt().next();
-        });
-        return this.getTextFromCryptedChars(this.crypted);
     }
 }
 
 
-
 let processInput = (data) => {
-    const allDataController = new AllDataController(data);
-    process.stdout.write(allDataController.crypt());
+    const dataProcessor = new DataProcessor();
+    process.stdout.write(dataProcessor.getCryptedText(data));
 
     let interval = setInterval(()=>{
-        const l = allDataController.rows.length,
-            value = allDataController.decrypt();
+        const l = dataProcessor.rows.length;
+        let {done, value} = dataProcessor.getSnapshot();
+
         process.stdout.write('\033['+l+'A');
         process.stdout.clearScreenDown();
-        if(value){
-            process.stdout.write(value);
-        } else {
+        process.stdout.write(value);
+
+        if(done){
             clearInterval(interval);
+            process.exit();
         }
-    }, 500);
+
+    }, 75);
+
+    dataProcessor.initDecrypt();
 };
 
