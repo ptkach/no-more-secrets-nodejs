@@ -14,8 +14,6 @@ You will need node.js preinstalled
 
 ```
 npm install -g no-more-secrets
-
-ls -la | nms
 ```
 
 ===============
